@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "Soxy Cleaning Services",
+    "slug": "soxy-cleaning-invoices",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "soxyinvoices",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.soxy.cleaninginvoices"
+    },
+    "android": {
+      "package": "com.soxy.cleaninginvoices",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B6B63",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#0B6B63"
+        }
+      ]
+    ],
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "0aa89a36-9f8a-4876-8835-3c79b6c68bca"
+      }
+    },
+    "owner": "shiestyute3n"
+  }
+}
