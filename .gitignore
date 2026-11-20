@@ -39,3 +39,15 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# editor / agent tooling (local only)
+.vscode/
+.kilo/
+.kilocode/
+
+# EAS credentials (defence in depth)
+credentials.json
+
+# OS files
+Thumbs.db
+desktop.ini

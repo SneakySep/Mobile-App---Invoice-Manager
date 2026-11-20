@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { Appbar, Chip, Searchbar, Snackbar, Text } from 'react-native-paper';
+import { Appbar, Chip, Menu, Searchbar, Snackbar, Text } from 'react-native-paper';
 
 import { BRAND } from '../constants/theme';
 import type { RootTabParamList } from '../navigation/types';
@@ -19,12 +19,16 @@ import { InvoiceCard } from '../components/invoices/InvoiceCard';
 import { EditInvoiceServicesModal } from '../components/invoices/EditInvoiceServicesModal';
 import { InvoiceImageShareModal } from '../components/invoices/InvoiceImageShareModal';
 import { EmptyState } from '../components/EmptyState';
+import { getDepositStatus } from '../utils/calculations';
 import { getErrorMessage } from '../utils/errors';
 import { exportInvoicesAsJson } from '../services/exportService';
 import { printInvoice, shareInvoicePdf } from '../services/pdfService';
 
-const FILTERS: Array<{ key: PaymentStatusFilter; label: string }> = [
+type InvoiceListFilter = PaymentStatusFilter | 'deposit-due';
+
+const FILTERS: Array<{ key: InvoiceListFilter; label: string }> = [
   { key: 'all', label: 'All' },
+  { key: 'deposit-due', label: 'Deposit due' },
   { key: 'unpaid', label: 'Unpaid' },
   { key: 'partial', label: 'Partial' },
   { key: 'paid', label: 'Paid' },
@@ -43,17 +47,26 @@ export function InvoiceListScreen() {
   } = useInvoices();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<PaymentStatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<InvoiceListFilter>('all');
   const [snackbarMessage, setSnackbarMessage] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [headerMenuVisible, setHeaderMenuVisible] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [sharingImageInvoice, setSharingImageInvoice] = useState<Invoice | null>(null);
 
   const counts = useMemo(
     () => ({
       all: invoices.length,
+      'deposit-due': invoices.filter((invoice) => {
+        const depositStatus = getDepositStatus(
+          invoice.grandTotal,
+          invoice.downpaymentRequired,
+          invoice.amountPaid,
+        );
+        return depositStatus === 'deposit-due' || depositStatus === 'deposit-short';
+      }).length,
       unpaid: invoices.filter((invoice) => invoice.paymentStatus === 'unpaid').length,
       partial: invoices.filter((invoice) => invoice.paymentStatus === 'partial').length,
       paid: invoices.filter((invoice) => invoice.paymentStatus === 'paid').length,
@@ -64,12 +77,22 @@ export function InvoiceListScreen() {
   const filteredInvoices = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     return invoices.filter((invoice) => {
+      const depositStatus = getDepositStatus(
+        invoice.grandTotal,
+        invoice.downpaymentRequired,
+        invoice.amountPaid,
+      );
       const matchesStatus =
-        statusFilter === 'all' || invoice.paymentStatus === statusFilter;
+        statusFilter === 'all' ||
+        (statusFilter === 'deposit-due'
+          ? depositStatus === 'deposit-due' || depositStatus === 'deposit-short'
+          : invoice.paymentStatus === statusFilter);
       const matchesQuery =
         !query ||
         invoice.customerName.toLowerCase().includes(query) ||
-        invoice.id.toLowerCase().includes(query);
+        invoice.id.toLowerCase().includes(query) ||
+        invoice.customerPhone?.toLowerCase().includes(query) ||
+        invoice.serviceAddress?.toLowerCase().includes(query);
       return matchesStatus && matchesQuery;
     });
   }, [invoices, searchQuery, statusFilter]);
@@ -215,18 +238,34 @@ export function InvoiceListScreen() {
           disabled={busy || invoices.length === 0}
           accessibilityLabel="Export all invoice data as JSON"
         />
-        <Appbar.Action
-          icon="delete-sweep-outline"
-          onPress={confirmClearAll}
-          disabled={busy || invoices.length === 0}
-          accessibilityLabel="Clear all invoices"
-        />
+        <Menu
+          visible={headerMenuVisible}
+          onDismiss={() => setHeaderMenuVisible(false)}
+          anchor={
+            <Appbar.Action
+              icon="dots-vertical"
+              onPress={() => setHeaderMenuVisible(true)}
+              disabled={busy || invoices.length === 0}
+              accessibilityLabel="More invoice list actions"
+            />
+          }
+        >
+          <Menu.Item
+            leadingIcon="delete-sweep-outline"
+            title="Clear all invoices"
+            titleStyle={styles.deleteMenuItem}
+            onPress={() => {
+              setHeaderMenuVisible(false);
+              confirmClearAll();
+            }}
+          />
+        </Menu>
       </Appbar.Header>
 
       <View style={styles.content}>
         <View style={styles.searchWrap}>
           <Searchbar
-            placeholder="Search customer or invoice ID"
+            placeholder="Search customer, address or invoice ID"
             value={searchQuery}
             onChangeText={setSearchQuery}
             elevation={0}
@@ -436,5 +475,8 @@ const styles = StyleSheet.create({
   },
   snackbarWrapper: {
     marginBottom: 6,
+  },
+  deleteMenuItem: {
+    color: BRAND.danger,
   },
 });

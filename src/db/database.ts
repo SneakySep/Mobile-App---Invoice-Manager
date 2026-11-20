@@ -1,7 +1,7 @@
 import * as SQLite from 'expo-sqlite';
 
 const DATABASE_NAME = 'soxy-invoices.db';
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
 
 let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
 let initializationPromise: Promise<void> | null = null;
@@ -54,6 +54,15 @@ async function runMigrations(): Promise<void> {
 
         CREATE INDEX IF NOT EXISTS idx_invoices_status
           ON invoices (payment_status);
+      `);
+    }
+
+    if (currentVersion < 2) {
+      await txn.execAsync(`
+        ALTER TABLE invoices ADD COLUMN customer_phone TEXT NOT NULL DEFAULT '';
+        ALTER TABLE invoices ADD COLUMN service_address TEXT NOT NULL DEFAULT '';
+        ALTER TABLE invoices ADD COLUMN scheduled_for TEXT NOT NULL DEFAULT '';
+        ALTER TABLE invoices ADD COLUMN service_notes TEXT NOT NULL DEFAULT '';
       `);
     }
 

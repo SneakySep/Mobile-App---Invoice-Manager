@@ -159,9 +159,23 @@ export function EditInvoiceServicesModal({
     setEditor(null);
   };
 
-  const handleRemove = (lineId: string) => {
+  const requestRemove = (line: InvoiceService) => {
     if (saving) return;
-    setServices((current) => current.filter((line) => line.id !== lineId));
+
+    Alert.alert(
+      'Remove this service?',
+      `${line.name} will be removed when you save these changes.`,
+      [
+        { text: 'Keep service', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            setServices((current) => current.filter((currentLine) => currentLine.id !== line.id));
+          },
+        },
+      ],
+    );
   };
 
   const toggleSection = (key: ServiceCategoryKey) => {
@@ -241,12 +255,12 @@ export function EditInvoiceServicesModal({
                 services={services}
                 subtotal={totals.subtotal}
                 onEdit={handleEditLine}
-                onRemove={handleRemove}
+                onRemove={requestRemove}
               />
 
               <View style={styles.menuHeader}>
                 <View>
-                  <Text style={styles.menuEyebrow}>SERVICE MENU</Text>
+                  <Text style={styles.menuEyebrow}>Service menu</Text>
                   <Text style={styles.menuTitle}>Add a service</Text>
                 </View>
                 <Text style={styles.menuHint}>Tap an item to add it</Text>
@@ -278,7 +292,7 @@ export function EditInvoiceServicesModal({
 
               <View style={styles.footerRow}>
                 <View style={styles.footerTotals}>
-                  <Text style={styles.footerLabel}>NEW GRAND TOTAL</Text>
+                  <Text style={styles.footerLabel}>New grand total</Text>
                   <Text style={styles.footerTotal}>{formatPeso(totals.grandTotal)}</Text>
                   <Text style={styles.footerMeta}>
                     20% downpayment {formatPeso(totals.downpaymentRequired)}
@@ -457,9 +471,8 @@ const styles = StyleSheet.create({
   },
   footerLabel: {
     color: BRAND.muted,
-    fontSize: 8.5,
-    fontWeight: '800',
-    letterSpacing: 0.9,
+    fontSize: 11,
+    fontWeight: '700',
   },
   footerTotal: {
     color: BRAND.primaryDark,

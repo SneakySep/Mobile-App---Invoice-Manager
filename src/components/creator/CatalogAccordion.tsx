@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   },
   countText: {
     color: BRAND.primaryDark,
-    fontSize: 9,
+    fontSize: 10.5,
     fontWeight: '800',
   },
   description: {
@@ -225,12 +225,12 @@ const styles = StyleSheet.create({
   },
   unit: {
     color: BRAND.muted,
-    fontSize: 10.5,
+    fontSize: 11,
     marginLeft: 3,
   },
   choose: {
-    color: '#8A9A95',
-    fontSize: 10.5,
+    color: BRAND.muted,
+    fontSize: 11,
     marginLeft: 3,
   },
   divider: {

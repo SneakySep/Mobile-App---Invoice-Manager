@@ -2,6 +2,7 @@ import { StyleSheet, View } from 'react-native';
 import { Button, Surface, Text } from 'react-native-paper';
 
 import { BRAND } from '../../constants/theme';
+import { DOWNPAYMENT_PERCENT_LABEL } from '../../constants/pricing';
 import { formatPeso } from '../../utils/money';
 
 interface StickyTotalsBarProps {
@@ -25,11 +26,11 @@ export function StickyTotalsBar({
       <View style={styles.inner}>
         <View style={styles.totalsRow}>
           <View style={styles.totalBlock}>
-            <Text style={styles.caption}>GRAND TOTAL</Text>
+            <Text style={styles.caption}>Grand total</Text>
             <Text style={styles.total}>{formatPeso(grandTotal)}</Text>
           </View>
           <View style={styles.downpaymentBlock}>
-            <Text style={styles.caption}>20% DOWNPAYMENT</Text>
+            <Text style={styles.caption}>{DOWNPAYMENT_PERCENT_LABEL} deposit</Text>
             <Text style={styles.downpayment}>{formatPeso(downpaymentRequired)}</Text>
           </View>
         </View>
@@ -41,9 +42,9 @@ export function StickyTotalsBar({
           icon={saving ? undefined : 'check-circle-outline'}
           style={styles.saveButton}
           contentStyle={styles.saveContent}
-          accessibilityLabel="Save and publish invoice"
+          accessibilityLabel="Save invoice"
         >
-          {saving ? (busyLabel ?? 'Saving invoice…') : 'Save & Publish Invoice'}
+          {saving ? (busyLabel ?? 'Saving invoice…') : 'Save & publish invoice'}
         </Button>
       </View>
     </Surface>
@@ -79,9 +80,8 @@ const styles = StyleSheet.create({
   },
   caption: {
     color: BRAND.muted,
-    fontSize: 8.5,
-    fontWeight: '800',
-    letterSpacing: 0.9,
+    fontSize: 12,
+    fontWeight: '700',
   },
   total: {
     color: BRAND.text,

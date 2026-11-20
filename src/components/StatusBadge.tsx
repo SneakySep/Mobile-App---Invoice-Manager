@@ -56,12 +56,12 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   label: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.7,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.1,
   },
   labelCompact: {
-    fontSize: 9,
-    letterSpacing: 0.5,
+    fontSize: 10,
+    letterSpacing: 0,
   },
 });

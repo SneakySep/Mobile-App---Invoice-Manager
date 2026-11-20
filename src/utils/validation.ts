@@ -1,6 +1,10 @@
 import {
+  MAX_CUSTOMER_PHONE_LENGTH,
   MAX_CUSTOMER_NAME_LENGTH,
   MAX_MONEY_INPUT,
+  MAX_SCHEDULE_LENGTH,
+  MAX_SERVICE_ADDRESS_LENGTH,
+  MAX_SERVICE_NOTES_LENGTH,
 } from '../constants/pricing';
 import type { InvoiceDraft } from '../types/invoice';
 import { calculateInvoiceTotals } from './calculations';
@@ -8,6 +12,10 @@ import { formatPeso, roundMoney, toCents } from './money';
 
 export interface DraftValidationErrors {
   customerName?: string;
+  customerPhone?: string;
+  serviceAddress?: string;
+  scheduledFor?: string;
+  serviceNotes?: string;
   services?: string;
   transportFee?: string;
   amountPaid?: string;
@@ -21,6 +29,19 @@ export function getDraftErrors(draft: InvoiceDraft): DraftValidationErrors {
     errors.customerName = 'Enter the customer’s name.';
   } else if (customerName.length > MAX_CUSTOMER_NAME_LENGTH) {
     errors.customerName = `Keep the name under ${MAX_CUSTOMER_NAME_LENGTH + 1} characters.`;
+  }
+
+  if ((draft.customerPhone?.trim().length ?? 0) > MAX_CUSTOMER_PHONE_LENGTH) {
+    errors.customerPhone = `Keep the phone number under ${MAX_CUSTOMER_PHONE_LENGTH + 1} characters.`;
+  }
+  if ((draft.serviceAddress?.trim().length ?? 0) > MAX_SERVICE_ADDRESS_LENGTH) {
+    errors.serviceAddress = `Keep the address under ${MAX_SERVICE_ADDRESS_LENGTH + 1} characters.`;
+  }
+  if ((draft.scheduledFor?.trim().length ?? 0) > MAX_SCHEDULE_LENGTH) {
+    errors.scheduledFor = `Keep the schedule under ${MAX_SCHEDULE_LENGTH + 1} characters.`;
+  }
+  if ((draft.serviceNotes?.trim().length ?? 0) > MAX_SERVICE_NOTES_LENGTH) {
+    errors.serviceNotes = `Keep the notes under ${MAX_SERVICE_NOTES_LENGTH + 1} characters.`;
   }
 
   if (!Number.isFinite(draft.transportFee) || draft.transportFee < 0) {
@@ -53,6 +74,10 @@ export function hasDraftErrors(errors: DraftValidationErrors): boolean {
 export function getFirstErrorMessage(errors: DraftValidationErrors): string | null {
   return (
     errors.customerName ??
+    errors.customerPhone ??
+    errors.serviceAddress ??
+    errors.scheduledFor ??
+    errors.serviceNotes ??
     errors.services ??
     errors.amountPaid ??
     errors.transportFee ??

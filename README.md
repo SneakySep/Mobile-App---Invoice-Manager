@@ -9,10 +9,11 @@ The app targets **iOS and Android** and runs in **Expo Go** (SDK 58).
 - Create an invoice with Soxy's full service catalog and live totals.
 - Override any service's unit price for a specific invoice without changing the catalog.
 - Edit the services and prices of saved invoices, with totals and payment status recalculated immediately.
-- Automatic **20% downpayment** calculation (informational, not auto-paid).
+- Automatic **20% downpayment** calculation with a separate **deposit status** badge (`Deposit due`, `Deposit short`, `Deposit received`, `Paid in full`) so a booking deposit is never confused with full payment.
+- Record the customer's phone number plus the job's service address, schedule, and notes on the invoice.
 - Record an initial or later payment and see the balance and payment status update instantly.
 - Save invoices locally in **Expo SQLite** — no account or internet connection required.
-- Search and filter invoice history by customer, invoice ID, or payment status.
+- Search and filter invoice history by customer, address, invoice ID, or payment status — including a **Deposit due** filter.
 - Share a professional A4 PDF, share a branded invoice PNG, open the native print dialog, or export a complete JSON backup.
 - Branded theme, app icon, splash screen, and mobile-first layouts.
 - Fully typed data model and calculation utilities with unit tests.
@@ -55,6 +56,12 @@ npx expo-doctor
 ### Invoice creator
 
 - Customer name with validation and a character counter.
+- Optional job details tucked behind an expander so quick invoices stay short:
+  - Customer phone number (30 characters)
+  - Service schedule (80 characters), e.g. `Fri, 9:00 AM`
+  - Service address (180 characters, multi-line)
+  - Service notes (300 characters, multi-line) for access, parking, or cleaning notes
+  - Phone and schedule are printed reminders only — the app does not send SMS or notifications.
 - Expandable service menu:
   - Cleaning Sessions
   - Furniture, Chairs & Pillows
@@ -65,7 +72,7 @@ npx expo-doctor
 - Reset an edited price back to its catalog price with one tap.
 - Service names stay catalog-defined; there is no free-form service entry.
 - Optional transportation fee.
-- Live services subtotal, grand total, 20% downpayment, balance, and payment badge.
+- Live services subtotal, grand total, 20% downpayment, balance, payment badge, and deposit status badge.
 - Quick payment chips: **Use 20% downpayment** and **Paid in full**.
 - Sticky bottom bar with grand total, deposit amount, and **Save & Publish Invoice**.
 - Print/Share actions save the invoice first, so every generated receipt or image also exists in history.
@@ -74,16 +81,17 @@ npx expo-doctor
 
 ### Invoice history
 
-- Newest-first cards with invoice ID, customer name, date, total, editable amount paid, balance, and a status badge:
+- Newest-first cards with invoice ID, customer name, date, schedule, address, phone, total, editable amount paid, balance, a payment status badge, and a separate deposit status badge:
   - **PAID** — green
   - **PARTIAL** — yellow
   - **UNPAID** — red
+  - Deposit: **Deposit due** / **Deposit short** / **Deposit received** / **Paid in full**
 - Inline payment editing with auto-save on blur and a save button. Balance, badge, and payment progress update as you type.
 - **Edit services** on any saved invoice: change quantities, cleaning levels, or unit prices, and add or remove service lines.
 - Editing a saved invoice recalculates its subtotal, grand total, 20% downpayment, balance, and payment status. The updated values flow straight into the PDF, shared image, and JSON backup.
 - Saving price changes is blocked if the new total would be lower than the amount already paid. Reduce the recorded payment first.
-- Search by customer name or invoice ID.
-- Filter by All / Unpaid / Partial / Paid.
+- Search by customer name, customer phone, service address, or invoice ID.
+- Filter by All / Deposit due / Unpaid / Partial / Paid.
 - Pull to refresh.
 - Per-invoice actions: Edit services, Share PDF, Share image, Print, Delete (with confirmation).
 - Header actions: Export all data as JSON and Clear all invoices (with confirmation).
@@ -154,6 +162,19 @@ balance          = grand total − amount paid
 - Balances never go below zero. Validation prevents overpayments from being saved.
 - The 20% downpayment does not automatically mark the invoice as paid.
 
+### Deposit status
+
+`getDepositStatus` is separate from the payment status because a booking is confirmed by the deposit, not by the first peso collected. A ₱200 part-payment on a ₱5,000 invoice is `PARTIAL` but still `Deposit due`.
+
+| Deposit status | When |
+| --- | --- |
+| `deposit-due` | Nothing has been paid yet |
+| `deposit-short` | Something has been paid, but less than the 20% downpayment |
+| `deposit-received` | The 20% downpayment has been covered |
+| `paid-in-full` | The amount paid covers the grand total |
+
+`getDepositShortfall` returns the remaining amount before the deposit is covered, and the invoice HTML prints one of four customer-facing messages based on the same status.
+
 ## Data and privacy
 
 Invoices are stored in a local SQLite database named `soxy-invoices.db`.
@@ -163,6 +184,7 @@ Invoices are stored in a local SQLite database named `soxy-invoices.db`.
 - **Export all data (JSON)** produces a complete backup with app version, schema version, export timestamp, and all invoices.
 - **Clear all invoices** permanently deletes every invoice in the local database. Export a backup first if the records may be needed.
 - The database schema uses `PRAGMA user_version` so future migrations can be added safely in `src/db/database.ts`.
+- **Schema version 2** adds optional customer phone, service address, service schedule, and service notes to each invoice. Existing invoices are migrated in place with empty values; no rows are dropped.
 
 ## PDF, images, and printing
 
@@ -174,6 +196,7 @@ Invoices are stored in a local SQLite database named `soxy-invoices.db`.
 - The native print dialog is opened with `expo-print`.
 - A4 dimensions are passed explicitly because Expo Print defaults to US Letter.
 - The PDF sheet uses percentage-based inner padding, so it keeps safe page margins even in print engines that ignore CSS `@page` margins.
+- The PDF prints a deposit-specific message ("downpayment required", "partial payment received, X more needed", "booking deposit received", or "paid in full") and a **Service details** section listing phone, schedule, address, and notes when present.
 - All customer-entered values are HTML-escaped before printing.
 - Print/Share requires the invoice to be saved first. This guarantees a receipt or image remains available in history.
 - Printing and sharing depend on the device's available print services and share targets. Test these flows on a physical phone.
@@ -184,6 +207,7 @@ Invoices are stored in a local SQLite database named `soxy-invoices.db`.
 .
 |-- App.tsx
 |-- app.json
+|-- eas.json                    # EAS build profiles (development / preview / production)
 |-- index.ts
 |-- assets/
 |-- src/
@@ -192,6 +216,7 @@ Invoices are stored in a local SQLite database named `soxy-invoices.db`.
 |   |   |-- creator/             # Customer, catalog, selected services, payment, footer, editor
 |   |   |-- invoices/            # History card, services editor, image sheet, and image share modal
 |   |   |-- AmountInput.tsx
+|   |   |-- DepositStatusBadge.tsx
 |   |   |-- EmptyState.tsx
 |   |   |-- SectionCard.tsx
 |   |   `-- StatusBadge.tsx
@@ -252,13 +277,13 @@ Invoices are stored in a local SQLite database named `soxy-invoices.db`.
 
 ## Standalone builds
 
-The project is ready for Expo Application Services (EAS) or local native builds.
+The project is ready for Expo Application Services (EAS) or local native builds. `eas.json` defines three profiles: `development` (dev client, internal distribution), `preview` (internal distribution), and `production` (auto-incrementing version).
 
 ```bash
 npx expo prebuild
 npx expo run:android
 # or, with EAS:
-npx eas-cli build --platform all
+npx eas-cli build --platform all --profile production
 ```
 
 The bundle identifiers are already set in `app.json`:
@@ -271,6 +296,6 @@ The bundle identifiers are already set in `app.json`:
 - Local-only storage; no cloud sync or multi-device access.
 - No authentication or user roles.
 - Service names and categories come from the built-in catalog; only quantity, tier, and unit price can be edited.
-- Customer contact details are not part of the invoice schema.
+- Customer phone, service address, schedule, and notes are free-form text. They are printed reminders only — the app does not send SMS, notifications, or reminders, and the fields are not validated as phone numbers or dates.
 - Invoice dates are generated automatically when saved.
 - Printing, image capture, and share-sheet behavior cannot be fully exercised in Expo Go without a physical device.

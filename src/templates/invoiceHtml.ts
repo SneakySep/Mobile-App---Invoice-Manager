@@ -1,6 +1,8 @@
 import { BUSINESS_INFO } from '../constants/business';
 import { PAYMENT_STATUS_META } from '../constants/theme';
+import { DOWNPAYMENT_PERCENT_LABEL } from '../constants/pricing';
 import type { Invoice } from '../types/invoice';
+import { getDepositShortfall, getDepositStatus } from '../utils/calculations';
 import { formatLongDateTime } from '../utils/date';
 import { escapeHtml } from '../utils/html';
 import { formatPeso, roundMoney } from '../utils/money';
@@ -22,6 +24,15 @@ export function buildInvoiceHtml(
   const status = PAYMENT_STATUS_META[invoice.paymentStatus];
   const customer = escapeHtml(invoice.customerName);
   const invoiceId = escapeHtml(invoice.id);
+  const depositStatus = getDepositStatus(
+    invoice.grandTotal,
+    invoice.downpaymentRequired,
+    invoice.amountPaid,
+  );
+  const depositShortfall = getDepositShortfall(
+    invoice.downpaymentRequired,
+    invoice.amountPaid,
+  );
   const servicesSubtotal = roundMoney(
     invoice.services.reduce((sum, line) => sum + line.totalPrice, 0),
   );
@@ -50,15 +61,51 @@ export function buildInvoiceHtml(
     </tr>`;
 
   const statusMessage =
-    invoice.paymentStatus === 'paid'
+    depositStatus === 'paid-in-full'
       ? 'Payment received in full. Thank you!'
-      : invoice.paymentStatus === 'partial'
-        ? `A partial payment of ${money(invoice.amountPaid)} has been received. The remaining balance of ${money(
+      : depositStatus === 'deposit-received'
+        ? `The required ${DOWNPAYMENT_PERCENT_LABEL} booking deposit has been received. The remaining balance of ${money(
             invoice.balance,
           )} is due upon completion of the service.`
-        : `A 20% downpayment of ${money(
-            invoice.downpaymentRequired,
-          )} is required to confirm this booking. The remaining balance is due upon completion of the service.`;
+        : depositStatus === 'deposit-short'
+          ? `A partial payment of ${money(invoice.amountPaid)} has been received. ${money(
+              depositShortfall,
+            )} more is needed to confirm the booking.`
+          : `A ${DOWNPAYMENT_PERCENT_LABEL} downpayment of ${money(
+              invoice.downpaymentRequired,
+            )} is required to confirm this booking. The remaining balance is due upon completion of the service.`;
+
+  const jobDetailRows = [
+    invoice.customerPhone
+      ? `<div class="job-line"><span>Customer phone</span><strong>${escapeHtml(
+          invoice.customerPhone,
+        )}</strong></div>`
+      : '',
+    invoice.scheduledFor
+      ? `<div class="job-line"><span>Service schedule</span><strong>${escapeHtml(
+          invoice.scheduledFor,
+        )}</strong></div>`
+      : '',
+    invoice.serviceAddress
+      ? `<div class="job-line"><span>Service address</span><strong>${escapeHtml(
+          invoice.serviceAddress,
+        )}</strong></div>`
+      : '',
+    invoice.serviceNotes
+      ? `<div class="job-line job-notes"><span>Service notes</span><strong>${escapeHtml(
+          invoice.serviceNotes,
+        )}</strong></div>`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('');
+
+  const jobDetails = jobDetailRows
+    ? `<section class="job-details">
+        <div class="section-title"><div>Service details</div></div>
+        <div class="job-panel">${jobDetailRows}</div>
+      </section>`
+    : '';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -183,6 +230,26 @@ export function buildInvoiceHtml(
     .meta-line { display: flex; justify-content: space-between; gap: 10px; }
     .meta-line span { color: var(--muted); font-size: 9.5px; white-space: nowrap; }
     .meta-line strong { font-size: 9.5px; text-align: right; white-space: nowrap; }
+
+    .job-details { margin-top: 14px; }
+    .job-details .section-title { margin: 0 0 7px; }
+    .job-panel {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fbfdfc;
+      padding: 3px 13px;
+    }
+    .job-line {
+      display: grid;
+      grid-template-columns: 118px 1fr;
+      gap: 12px;
+      padding: 7px 0;
+      border-bottom: 1px solid #edf2f0;
+    }
+    .job-line:last-child { border-bottom: 0; }
+    .job-line span { color: var(--muted); font-size: 9.5px; }
+    .job-line strong { font-size: 9.5px; font-weight: 600; text-align: right; white-space: pre-wrap; }
+    .job-line.job-notes { align-items: flex-start; }
 
     .section-title {
       display: flex;
@@ -323,7 +390,7 @@ export function buildInvoiceHtml(
       <div class="document">
         <div class="document-type">INVOICE</div>
         <div class="document-caption">${escapeHtml(invoice.id)}</div>
-        <div class="status-pill">${escapeHtml(status.label)}</div>
+        <div class="status-pill">${escapeHtml(status.label.toUpperCase())}</div>
       </div>
     </header>
 
@@ -339,6 +406,8 @@ export function buildInvoiceHtml(
         <div class="meta-line"><span>Payment status</span><strong style="color:${status.foreground}">${escapeHtml(status.label)}</strong></div>
       </div>
     </section>
+
+    ${jobDetails}
 
     <div class="section-title">
       <div>Services</div>
@@ -385,7 +454,7 @@ export function buildInvoiceHtml(
             <td class="value">${money(invoice.grandTotal)}</td>
           </tr>
           <tr class="downpayment">
-            <td class="label">20% downpayment required</td>
+            <td class="label">${DOWNPAYMENT_PERCENT_LABEL} downpayment required</td>
             <td class="value">${money(invoice.downpaymentRequired)}</td>
           </tr>
           <tr class="paid">

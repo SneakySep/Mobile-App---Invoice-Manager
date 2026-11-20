@@ -4,8 +4,10 @@ import { Button, Chip, Divider, Text } from 'react-native-paper';
 
 import { BRAND } from '../../constants/theme';
 import type { PaymentStatus } from '../../types/invoice';
+import { getDepositShortfall, getDepositStatus } from '../../utils/calculations';
 import { formatPeso } from '../../utils/money';
 import { AmountInput } from '../AmountInput';
+import { DepositStatusBadge } from '../DepositStatusBadge';
 import { SectionCard } from '../SectionCard';
 import { StatusBadge } from '../StatusBadge';
 
@@ -19,6 +21,7 @@ interface PaymentSummaryCardProps {
   subtotal: number;
   grandTotal: number;
   downpaymentRequired: number;
+  amountPaid: number;
   balance: number;
   paymentStatus: PaymentStatus;
   onUseDownpayment: () => void;
@@ -35,11 +38,23 @@ export function PaymentSummaryCard({
   subtotal,
   grandTotal,
   downpaymentRequired,
+  amountPaid,
   balance,
   paymentStatus,
   onUseDownpayment,
   onUseFullPayment,
 }: PaymentSummaryCardProps) {
+  const depositStatus = getDepositStatus(grandTotal, downpaymentRequired, amountPaid);
+  const depositShortfall = getDepositShortfall(downpaymentRequired, amountPaid);
+  const depositDescription =
+    depositStatus === 'paid-in-full'
+      ? 'This invoice is fully settled.'
+      : depositStatus === 'deposit-received'
+        ? 'Booking deposit received. The remaining balance is due after service.'
+        : depositStatus === 'deposit-short'
+          ? `${formatPeso(depositShortfall)} more is needed to confirm the booking.`
+          : `${formatPeso(downpaymentRequired)} is needed to confirm the booking.`;
+
   return (
     <SectionCard
       title="Totals & payment"
@@ -81,10 +96,15 @@ export function PaymentSummaryCard({
           <MaterialCommunityIcons name="wallet-outline" size={20} color="#8A5A00" />
         </View>
         <View style={styles.downpaymentCopy}>
-          <Text style={styles.downpaymentLabel}>20% downpayment required</Text>
-          <Text style={styles.downpaymentHint}>Include transportation in the total.</Text>
+          <Text style={styles.downpaymentLabel}>20% booking deposit</Text>
+          <Text style={styles.downpaymentHint}>{depositDescription}</Text>
         </View>
-        <Text style={styles.downpaymentValue}>{formatPeso(downpaymentRequired)}</Text>
+        <View style={styles.downpaymentStatus}>
+          <DepositStatusBadge status={depositStatus} compact />
+          <Text style={styles.downpaymentValue}>
+            {depositShortfall > 0 ? formatPeso(depositShortfall) : formatPeso(downpaymentRequired)}
+          </Text>
+        </View>
       </View>
 
       <View style={styles.paidHeader}>
@@ -235,12 +255,17 @@ const styles = StyleSheet.create({
   },
   downpaymentHint: {
     color: '#99743C',
-    fontSize: 9.5,
-    marginTop: 1,
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 2,
+  },
+  downpaymentStatus: {
+    alignItems: 'flex-end',
+    gap: 4,
   },
   downpaymentValue: {
     color: '#7A4C00',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
   },
   paidHeader: {

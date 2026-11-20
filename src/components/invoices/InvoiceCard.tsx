@@ -5,15 +5,20 @@ import {
   ActivityIndicator,
   Button,
   Divider,
-  IconButton,
+  Menu,
   ProgressBar,
   Surface,
   Text,
+  TouchableRipple,
 } from 'react-native-paper';
 
 import { BRAND, PAYMENT_STATUS_META } from '../../constants/theme';
 import type { Invoice } from '../../types/invoice';
-import { calculateInvoiceTotals } from '../../utils/calculations';
+import {
+  calculateInvoiceTotals,
+  getDepositShortfall,
+  getDepositStatus,
+} from '../../utils/calculations';
 import { formatInvoiceDate } from '../../utils/date';
 import { getErrorMessage, isCancellationError } from '../../utils/errors';
 import {
@@ -24,6 +29,7 @@ import {
 } from '../../utils/money';
 import { getPaymentError } from '../../utils/validation';
 import { AmountInput } from '../AmountInput';
+import { DepositStatusBadge } from '../DepositStatusBadge';
 import { StatusBadge } from '../StatusBadge';
 
 type InvoiceAction = 'share' | 'share-image' | 'print';
@@ -50,6 +56,8 @@ export function InvoiceCard({
   const [paidText, setPaidText] = useState(() => formatAmountForInput(invoice.amountPaid));
   const [savingPayment, setSavingPayment] = useState(false);
   const [activeAction, setActiveAction] = useState<InvoiceAction | null>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const paymentPromiseRef = useRef<Promise<Invoice | null> | null>(null);
 
   useEffect(() => {
@@ -69,6 +77,20 @@ export function InvoiceCard({
     invoice.grandTotal > 0
       ? Math.min(1, Math.max(0, preview.amountPaid / invoice.grandTotal))
       : 0;
+  const depositStatus = getDepositStatus(
+    invoice.grandTotal,
+    invoice.downpaymentRequired,
+    preview.amountPaid,
+  );
+  const depositShortfall = getDepositShortfall(invoice.downpaymentRequired, preview.amountPaid);
+  const depositHint =
+    depositStatus === 'paid-in-full'
+      ? 'Invoice settled'
+      : depositStatus === 'deposit-received'
+        ? 'Booking deposit received'
+        : depositStatus === 'deposit-short'
+          ? `${formatPeso(depositShortfall)} still needed to confirm`
+          : `${formatPeso(invoice.downpaymentRequired)} needed to confirm`;
 
   const persistPayment = useCallback(async (): Promise<Invoice | null> => {
     if (paymentPromiseRef.current) {
@@ -139,6 +161,7 @@ export function InvoiceCard({
   };
 
   const runInvoiceAction = async (action: InvoiceAction) => {
+    if (activeAction || savingPayment) return;
     setActiveAction(action);
     try {
       let latestInvoice = invoice;
@@ -181,33 +204,80 @@ export function InvoiceCard({
 
   return (
     <Surface style={styles.card} elevation={1}>
-      <View style={styles.topRow}>
-        <View style={styles.customerCopy}>
-          <Text style={styles.customerName} numberOfLines={2}>
-            {invoice.customerName}
-          </Text>
-          <View style={styles.idRow}>
-            <MaterialCommunityIcons
-              name="receipt-text-outline"
-              size={13}
-              color={BRAND.muted}
-            />
-            <Text style={styles.invoiceId} numberOfLines={1}>
-              {invoice.id}
-            </Text>
+      <TouchableRipple
+        onPress={() => setExpanded((current) => !current)}
+        rippleColor="rgba(11, 107, 99, 0.08)"
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={`${expanded ? 'Collapse' : 'Expand'} details for ${invoice.customerName}`}
+      >
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <View style={styles.nameRow}>
+              <Text style={[styles.customerName, { flex: 1 }]} numberOfLines={1}>
+                {invoice.customerName}
+              </Text>
+              <MaterialCommunityIcons
+                name={expanded ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={BRAND.muted}
+                style={styles.chevron}
+              />
+            </View>
+            <View style={styles.idRow}>
+              <MaterialCommunityIcons name="receipt-text-outline" size={13} color={BRAND.muted} />
+              <Text style={[styles.invoiceId, { flex: 0 }]} numberOfLines={1}>
+                {invoice.id}
+              </Text>
+              <Text style={styles.date}>· {formatInvoiceDate(invoice.date)}</Text>
+            </View>
           </View>
-          <Text style={styles.date}>{formatInvoiceDate(invoice.date)}</Text>
+          <View style={styles.headerRight}>
+            <StatusBadge status={preview.paymentStatus} compact />
+            <View style={styles.balanceInline}>
+              <Text style={styles.amountCaption}>Balance</Text>
+              <Text style={[styles.balanceAmount, { color: statusMeta.foreground }]}>
+                {formatPeso(preview.balance)}
+              </Text>
+            </View>
+          </View>
         </View>
-        <StatusBadge status={preview.paymentStatus} />
-      </View>
+      </TouchableRipple>
+
+      {expanded ? (
+        <View style={styles.body}>
+          {invoice.scheduledFor ? (
+            <View style={styles.jobMetaRow}>
+              <MaterialCommunityIcons name="calendar-clock-outline" size={13} color={BRAND.muted} />
+              <Text style={styles.jobMeta} numberOfLines={1}>
+                {invoice.scheduledFor}
+              </Text>
+            </View>
+          ) : null}
+          {invoice.serviceAddress ? (
+            <View style={styles.jobMetaRow}>
+              <MaterialCommunityIcons name="map-marker-outline" size={13} color={BRAND.muted} />
+              <Text style={styles.jobMeta} numberOfLines={1}>
+                {invoice.serviceAddress}
+              </Text>
+            </View>
+          ) : null}
+          {invoice.customerPhone ? (
+            <View style={styles.jobMetaRow}>
+              <MaterialCommunityIcons name="phone-outline" size={13} color={BRAND.muted} />
+              <Text style={styles.jobMeta} numberOfLines={1}>
+                {invoice.customerPhone}
+              </Text>
+            </View>
+          ) : null}
 
       <View style={styles.amountsRow}>
         <View>
-          <Text style={styles.amountCaption}>TOTAL</Text>
+          <Text style={styles.amountCaption}>Total</Text>
           <Text style={styles.totalAmount}>{formatPeso(invoice.grandTotal)}</Text>
         </View>
         <View style={styles.balanceBlock}>
-          <Text style={styles.amountCaption}>BALANCE</Text>
+          <Text style={styles.amountCaption}>Balance</Text>
           <Text style={[styles.balanceAmount, { color: statusMeta.foreground }]}>
             {formatPeso(preview.balance)}
           </Text>
@@ -225,13 +295,17 @@ export function InvoiceCard({
         accessibilityLabel={`Payment progress ${Math.round(progress * 100)} percent`}
       />
 
+      <View style={styles.depositRow}>
+        <DepositStatusBadge status={depositStatus} compact />
+        <Text style={styles.depositHint}>{depositHint}</Text>
+      </View>
+
       <View style={styles.paidRow}>
         <View style={styles.paidInput}>
           <AmountInput
             label="Amount paid"
             value={paidText}
             onChangeText={setPaidText}
-            onBlur={() => void persistPayment()}
             onSubmitEditing={() => void persistPayment()}
             compact
             errorText={paymentError}
@@ -243,15 +317,17 @@ export function InvoiceCard({
             <ActivityIndicator size={18} color={BRAND.primary} />
           </View>
         ) : (
-          <IconButton
-            icon="content-save-check-outline"
+          <Button
             mode="contained-tonal"
-            size={18}
+            icon="content-save-check-outline"
             onPress={() => void persistPayment()}
             disabled={!isDirty || Boolean(paymentError)}
             style={styles.savePaymentButton}
+            contentStyle={styles.savePaymentContent}
             accessibilityLabel="Save payment amount"
-          />
+          >
+            Save
+          </Button>
         )}
       </View>
 
@@ -270,59 +346,64 @@ export function InvoiceCard({
       <Divider style={styles.divider} />
 
       <View style={styles.actions}>
-        <View style={styles.actionRow}>
-          <Button
-            mode="text"
-            icon="share-variant-outline"
-            compact
-            loading={activeAction === 'share'}
-            disabled={Boolean(activeAction)}
-            onPress={() => void runInvoiceAction('share')}
-            style={styles.actionButton}
-            contentStyle={styles.actionContent}
-          >
-            Share PDF
-          </Button>
-          <Button
-            mode="text"
-            icon="image-outline"
-            compact
-            loading={activeAction === 'share-image'}
-            disabled={Boolean(activeAction)}
-            onPress={() => void runInvoiceAction('share-image')}
-            style={styles.actionButton}
-            contentStyle={styles.actionContent}
-          >
-            Share image
-          </Button>
-        </View>
-        <View style={styles.actionRow}>
-          <Button
-            mode="text"
-            icon="printer-outline"
-            compact
-            loading={activeAction === 'print'}
-            disabled={Boolean(activeAction)}
-            onPress={() => void runInvoiceAction('print')}
-            style={styles.actionButton}
-            contentStyle={styles.actionContent}
-          >
-            Print
-          </Button>
-          <Button
-            mode="text"
-            icon="delete-outline"
-            compact
-            textColor={BRAND.danger}
-            disabled={Boolean(activeAction) || savingPayment}
-            onPress={onDelete}
-            style={styles.actionButton}
-            contentStyle={styles.actionContent}
-          >
-            Delete
-          </Button>
-        </View>
+        <Button
+          mode="text"
+          icon="share-variant-outline"
+          loading={activeAction === 'share'}
+          disabled={Boolean(activeAction) || savingPayment}
+          onPress={() => void runInvoiceAction('share')}
+          style={styles.actionButton}
+          contentStyle={styles.actionContent}
+        >
+          Share PDF
+        </Button>
+        <Menu
+          visible={menuVisible}
+          onDismiss={() => setMenuVisible(false)}
+          anchor={
+            <Button
+              mode="text"
+              icon="dots-horizontal"
+              disabled={Boolean(activeAction) || savingPayment}
+              onPress={() => setMenuVisible(true)}
+              style={styles.moreButton}
+              contentStyle={styles.actionContent}
+              accessibilityLabel="More invoice actions"
+            >
+              More
+            </Button>
+          }
+        >
+          <Menu.Item
+            leadingIcon="image-outline"
+            title="Share image"
+            onPress={() => {
+              setMenuVisible(false);
+              void runInvoiceAction('share-image');
+            }}
+          />
+          <Menu.Item
+            leadingIcon="printer-outline"
+            title="Print invoice"
+            onPress={() => {
+              setMenuVisible(false);
+              void runInvoiceAction('print');
+            }}
+          />
+          <Divider />
+          <Menu.Item
+            leadingIcon="delete-outline"
+            title="Delete invoice"
+            titleStyle={styles.deleteMenuItem}
+            onPress={() => {
+              setMenuVisible(false);
+              onDelete();
+            }}
+          />
+        </Menu>
       </View>
+        </View>
+      ) : null}
     </Surface>
   );
 }
@@ -335,14 +416,36 @@ const styles = StyleSheet.create({
     borderColor: BRAND.border,
     padding: 15,
     marginBottom: 12,
+    overflow: 'hidden',
   },
-  topRow: {
+  header: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
   },
-  customerCopy: {
+  headerLeft: {
     flex: 1,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  chevron: {
+    marginLeft: 2,
+  },
+  headerRight: {
+    alignItems: 'flex-end',
+    gap: 3,
+  },
+  balanceInline: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+  },
+  body: {
+    paddingTop: 2,
   },
   customerName: {
     color: BRAND.text,
@@ -359,13 +462,24 @@ const styles = StyleSheet.create({
   },
   invoiceId: {
     color: BRAND.muted,
-    fontSize: 10.5,
+    fontSize: 12,
     flex: 1,
   },
   date: {
     color: BRAND.muted,
-    fontSize: 10.5,
+    fontSize: 12,
     marginTop: 2,
+  },
+  jobMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
+  },
+  jobMeta: {
+    flex: 1,
+    color: BRAND.muted,
+    fontSize: 12,
   },
   amountsRow: {
     flexDirection: 'row',
@@ -380,9 +494,8 @@ const styles = StyleSheet.create({
   },
   amountCaption: {
     color: BRAND.muted,
-    fontSize: 8.5,
-    fontWeight: '800',
-    letterSpacing: 0.8,
+    fontSize: 11,
+    fontWeight: '700',
   },
   totalAmount: {
     color: BRAND.text,
@@ -408,17 +521,29 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     color: BRAND.muted,
-    fontSize: 10,
+    fontSize: 11,
   },
   progressValue: {
     color: BRAND.muted,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
   },
   progress: {
     height: 6,
     borderRadius: 3,
     backgroundColor: '#ECF2EF',
+  },
+  depositRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 9,
+  },
+  depositHint: {
+    flex: 1,
+    color: BRAND.muted,
+    fontSize: 11,
+    lineHeight: 15,
   },
   paidRow: {
     flexDirection: 'row',
@@ -437,6 +562,10 @@ const styles = StyleSheet.create({
   },
   savePaymentButton: {
     margin: 0,
+    borderRadius: 10,
+  },
+  savePaymentContent: {
+    height: 42,
   },
   editServicesButton: {
     marginTop: 10,
@@ -444,7 +573,7 @@ const styles = StyleSheet.create({
     borderColor: '#BFDCD5',
   },
   editServicesContent: {
-    height: 38,
+    height: 44,
   },
   divider: {
     marginTop: 8,
@@ -452,18 +581,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#EDF2F0',
   },
   actions: {
-    marginTop: 2,
-  },
-  actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: -5,
+    justifyContent: 'space-between',
+    marginTop: 2,
   },
   actionButton: {
-    flex: 1,
+    marginLeft: -8,
   },
   actionContent: {
-    height: 36,
-    paddingHorizontal: 2,
+    height: 44,
+  },
+  moreButton: {
+    marginRight: -8,
+  },
+  deleteMenuItem: {
+    color: BRAND.danger,
   },
 });

@@ -1,5 +1,10 @@
 import { DOWNPAYMENT_RATE } from '../constants/pricing';
-import type { InvoiceService, InvoiceTotals, PaymentStatus } from '../types/invoice';
+import type {
+  DepositStatus,
+  InvoiceService,
+  InvoiceTotals,
+  PaymentStatus,
+} from '../types/invoice';
 import { roundMoney, toCents } from './money';
 
 export function calculateLineTotal(unitPrice: number, quantity: number): number {
@@ -23,6 +28,34 @@ export function getPaymentStatus(grandTotal: number, amountPaid: number): Paymen
 
 export function calculateDownpayment(grandTotal: number): number {
   return roundMoney(Math.max(0, grandTotal) * DOWNPAYMENT_RATE);
+}
+
+/**
+ * Separates booking readiness from the broader paid/partial/unpaid invoice
+ * status. A small partial payment should not look like a booking-confirming
+ * deposit to a cleaner in the field.
+ */
+export function getDepositStatus(
+  grandTotal: number,
+  downpaymentRequired: number,
+  amountPaid: number,
+): DepositStatus {
+  const totalCents = Math.max(0, toCents(grandTotal));
+  const requiredCents = Math.min(totalCents, Math.max(0, toCents(downpaymentRequired)));
+  const paidCents = Math.max(0, toCents(amountPaid));
+
+  if (totalCents > 0 && paidCents >= totalCents) {
+    return 'paid-in-full';
+  }
+  if (requiredCents === 0 || paidCents >= requiredCents) {
+    return 'deposit-received';
+  }
+  return paidCents > 0 ? 'deposit-short' : 'deposit-due';
+}
+
+/** Amount still needed before the job's required booking deposit is covered. */
+export function getDepositShortfall(downpaymentRequired: number, amountPaid: number): number {
+  return roundMoney(Math.max(0, downpaymentRequired - Math.max(0, amountPaid)));
 }
 
 export interface InvoiceCalculationInput {

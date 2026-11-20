@@ -107,6 +107,10 @@ export function InvoicesProvider({ children }: PropsWithChildren) {
   const addInvoice = useCallback(async (draft: InvoiceDraft): Promise<Invoice> => {
     const normalizedDraft: InvoiceDraft = {
       customerName: draft.customerName.trim(),
+      customerPhone: draft.customerPhone?.trim() ?? '',
+      serviceAddress: draft.serviceAddress?.trim() ?? '',
+      scheduledFor: draft.scheduledFor?.trim() ?? '',
+      serviceNotes: draft.serviceNotes?.trim() ?? '',
       services: draft.services.map((line) => ({
         ...line,
         unitPrice: roundMoney(line.unitPrice),
@@ -128,6 +132,10 @@ export function InvoicesProvider({ children }: PropsWithChildren) {
       id: createInvoiceId(timestamp),
       date: now,
       customerName: normalizedDraft.customerName,
+      customerPhone: normalizedDraft.customerPhone,
+      serviceAddress: normalizedDraft.serviceAddress,
+      scheduledFor: normalizedDraft.scheduledFor,
+      serviceNotes: normalizedDraft.serviceNotes,
       services: normalizedDraft.services,
       transportFee: normalizedDraft.transportFee,
       grandTotal: totals.grandTotal,

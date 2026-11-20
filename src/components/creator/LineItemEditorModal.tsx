@@ -39,6 +39,12 @@ interface LineItemEditorModalProps {
   ) => void;
 }
 
+const LEVEL_SCOPE: Record<string, string> = {
+  standard: 'Routine care for regular upkeep.',
+  deep: 'Extra attention for built-up dirt and stains.',
+  premium: 'Deep care for the most demanding cleaning needs.',
+};
+
 /**
  * Bottom sheet used both to add a service and to edit an existing line.
  * Keeping the price-tier chooser here keeps the catalog itself uncluttered.
@@ -54,6 +60,7 @@ export function LineItemEditorModal({
   const [optionId, setOptionId] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [priceText, setPriceText] = useState('');
+  const [priceOverrideEnabled, setPriceOverrideEnabled] = useState(false);
 
   useLayoutEffect(() => {
     if (!visible || !item) return;
@@ -68,6 +75,9 @@ export function LineItemEditorModal({
     setOptionId(initialOption?.id ?? '');
     setQuantity(clampQuantity(initialQuantity, item.quantityStep, item.maxQuantity));
     setPriceText(formatAmountForInput(initialPrice));
+    setPriceOverrideEnabled(
+      toCents(initialPrice) !== toCents(initialOption?.price ?? initialPrice),
+    );
   }, [visible, item, editingLine]);
 
   if (!item) {
@@ -110,6 +120,7 @@ export function LineItemEditorModal({
 
   const useCatalogPrice = () => {
     setPriceText(formatAmountForInput(selectedOption.price));
+    setPriceOverrideEnabled(false);
   };
 
   const dismiss = () => {
@@ -166,6 +177,7 @@ export function LineItemEditorModal({
               <View style={styles.optionList}>
                 {item.options.map((option) => {
                   const selected = option.id === selectedOption.id;
+                  const scope = LEVEL_SCOPE[option.id];
                   return (
                     <TouchableRipple
                       key={option.id}
@@ -185,14 +197,17 @@ export function LineItemEditorModal({
                             <MaterialCommunityIcons name="check" size={13} color="#FFFFFF" />
                           ) : null}
                         </View>
-                        <Text
-                          style={[
-                            styles.optionLabel,
-                            selected && styles.optionLabelSelected,
-                          ]}
-                        >
-                          {option.label ?? 'Standard'}
-                        </Text>
+                        <View style={styles.optionCopy}>
+                          <Text
+                            style={[
+                              styles.optionLabel,
+                              selected && styles.optionLabelSelected,
+                            ]}
+                          >
+                            {option.label ?? 'Standard'}
+                          </Text>
+                          {scope ? <Text style={styles.optionScope}>{scope}</Text> : null}
+                        </View>
                         <Text
                           style={[
                             styles.optionPrice,
@@ -215,22 +230,32 @@ export function LineItemEditorModal({
           )}
 
           <View style={styles.priceCard}>
-            <AmountInput
-              label={`Unit price per ${item.unitLabel}`}
-              value={priceText}
-              onChangeText={setPriceText}
-              onSubmitEditing={() => Keyboard.dismiss()}
-              errorText={priceError}
-              helperText={
-                isCustomPrice
-                  ? `Custom price for this invoice. Catalog: ${formatPeso(
-                      selectedOption.price,
-                    )}.`
-                  : 'You can adjust this price for this invoice only.'
-              }
-              accessibilityLabel={`Unit price for ${item.name}`}
-            />
-            {isCustomPrice ? (
+            {priceOverrideEnabled ? (
+              <AmountInput
+                label={`Unit price per ${item.unitLabel}`}
+                value={priceText}
+                onChangeText={setPriceText}
+                onSubmitEditing={() => Keyboard.dismiss()}
+                errorText={priceError}
+                helperText={
+                  isCustomPrice
+                    ? `Custom price for this invoice. Catalog: ${formatPeso(
+                        selectedOption.price,
+                      )}.`
+                    : 'This invoice is using the catalog price.'
+                }
+                accessibilityLabel={`Unit price for ${item.name}`}
+              />
+            ) : (
+              <View style={styles.catalogPriceSummary}>
+                <View>
+                  <Text style={styles.catalogPriceLabel}>Catalog price per {item.unitLabel}</Text>
+                  <Text style={styles.catalogPriceHint}>Use this unless you have agreed a special rate.</Text>
+                </View>
+                <Text style={styles.catalogPriceValue}>{formatPeso(selectedOption.price)}</Text>
+              </View>
+            )}
+            {priceOverrideEnabled ? (
               <Button
                 mode="text"
                 compact
@@ -241,7 +266,17 @@ export function LineItemEditorModal({
               >
                 Use catalog price
               </Button>
-            ) : null}
+            ) : (
+              <Button
+                mode="outlined"
+                compact
+                icon="pencil-outline"
+                onPress={() => setPriceOverrideEnabled(true)}
+                style={styles.adjustPriceButton}
+              >
+                Adjust price
+              </Button>
+            )}
           </View>
 
           <View style={styles.quantityCard}>
@@ -408,10 +443,18 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND.primary,
   },
   optionLabel: {
-    flex: 1,
     color: BRAND.text,
     fontSize: 14,
     fontWeight: '600',
+  },
+  optionCopy: {
+    flex: 1,
+  },
+  optionScope: {
+    color: BRAND.muted,
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 1,
   },
   optionLabelSelected: {
     color: BRAND.primaryDark,
@@ -449,10 +492,43 @@ const styles = StyleSheet.create({
   priceCard: {
     marginBottom: 14,
   },
+  catalogPriceSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: BRAND.border,
+    borderRadius: 13,
+    backgroundColor: '#F7FAF8',
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+  },
+  catalogPriceLabel: {
+    color: BRAND.text,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  catalogPriceHint: {
+    color: BRAND.muted,
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 2,
+  },
+  catalogPriceValue: {
+    color: BRAND.primaryDark,
+    fontSize: 17,
+    fontWeight: '800',
+  },
   catalogPriceButton: {
     alignSelf: 'flex-start',
     marginTop: 2,
     marginLeft: -8,
+  },
+  adjustPriceButton: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    borderRadius: 10,
   },
   quantityCard: {
     flexDirection: 'row',

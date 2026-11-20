@@ -5,6 +5,10 @@ interface InvoiceRow {
   id: string;
   date: string;
   customer_name: string;
+  customer_phone: string;
+  service_address: string;
+  scheduled_for: string;
+  service_notes: string;
   services: string;
   transport_fee: number;
   grand_total: number;
@@ -66,6 +70,10 @@ function mapRow(row: InvoiceRow): Invoice {
     id: row.id,
     date: row.date,
     customerName: row.customer_name,
+    customerPhone: row.customer_phone,
+    serviceAddress: row.service_address,
+    scheduledFor: row.scheduled_for,
+    serviceNotes: row.service_notes,
     services: parseStoredServices(row.services),
     transportFee: row.transport_fee,
     grandTotal: row.grand_total,
@@ -96,13 +104,18 @@ export async function insertInvoice(invoice: Invoice): Promise<void> {
   const db = await getDatabase();
   await db.runAsync(
     `INSERT INTO invoices (
-      id, date, customer_name, services, transport_fee, grand_total,
+      id, date, customer_name, customer_phone, service_address, scheduled_for, service_notes,
+      services, transport_fee, grand_total,
       downpayment_required, amount_paid, balance, payment_status, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
     [
       invoice.id,
       invoice.date,
       invoice.customerName,
+      invoice.customerPhone ?? '',
+      invoice.serviceAddress ?? '',
+      invoice.scheduledFor ?? '',
+      invoice.serviceNotes ?? '',
       JSON.stringify(invoice.services),
       invoice.transportFee,
       invoice.grandTotal,

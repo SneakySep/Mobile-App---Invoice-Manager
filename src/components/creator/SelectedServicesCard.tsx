@@ -12,7 +12,8 @@ interface SelectedServicesCardProps {
   services: InvoiceService[];
   subtotal: number;
   onEdit: (line: InvoiceService) => void;
-  onRemove: (lineId: string) => void;
+  onRemove: (line: InvoiceService) => void;
+  errorText?: string;
 }
 
 export function SelectedServicesCard({
@@ -20,6 +21,7 @@ export function SelectedServicesCard({
   subtotal,
   onEdit,
   onRemove,
+  errorText,
 }: SelectedServicesCardProps) {
   return (
     <SectionCard
@@ -33,7 +35,7 @@ export function SelectedServicesCard({
       right={
         services.length > 0 ? (
           <View style={styles.subtotal}>
-            <Text style={styles.subtotalLabel}>SUBTOTAL</Text>
+            <Text style={styles.subtotalLabel}>Subtotal</Text>
             <Text style={styles.subtotalValue}>{formatPeso(subtotal)}</Text>
           </View>
         ) : undefined
@@ -98,7 +100,7 @@ export function SelectedServicesCard({
                     icon="delete-outline"
                     iconColor={BRAND.danger}
                     size={19}
-                    onPress={() => onRemove(line.id)}
+                    onPress={() => onRemove(line)}
                     accessibilityLabel={`Remove ${line.name}`}
                     style={styles.removeButton}
                   />
@@ -108,6 +110,12 @@ export function SelectedServicesCard({
           })}
         </View>
       )}
+      {errorText ? (
+        <View style={styles.errorNotice} accessibilityRole="alert">
+          <MaterialCommunityIcons name="alert-circle-outline" size={17} color={BRAND.danger} />
+          <Text style={styles.errorText}>{errorText}</Text>
+        </View>
+      ) : null}
     </SectionCard>
   );
 }
@@ -118,9 +126,8 @@ const styles = StyleSheet.create({
   },
   subtotalLabel: {
     color: BRAND.muted,
-    fontSize: 8,
-    fontWeight: '800',
-    letterSpacing: 0.8,
+    fontSize: 11,
+    fontWeight: '700',
   },
   subtotalValue: {
     color: BRAND.primaryDark,
@@ -212,5 +219,23 @@ const styles = StyleSheet.create({
     margin: 0,
     marginLeft: 1,
     marginRight: -6,
+  },
+  errorNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 7,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#F4C7C2',
+    borderRadius: 10,
+    backgroundColor: '#FEF2F1',
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+  },
+  errorText: {
+    flex: 1,
+    color: BRAND.danger,
+    fontSize: 12,
+    lineHeight: 17,
   },
 });

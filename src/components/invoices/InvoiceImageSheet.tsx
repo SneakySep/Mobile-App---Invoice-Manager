@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { BUSINESS_INFO } from '../../constants/business';
 import { BRAND, PAYMENT_STATUS_META } from '../../constants/theme';
 import type { Invoice } from '../../types/invoice';
+import { getDepositShortfall, getDepositStatus } from '../../utils/calculations';
 import { formatLongDateTime } from '../../utils/date';
 import { formatPeso, formatQuantity, roundMoney } from '../../utils/money';
 
@@ -72,19 +73,32 @@ function TotalRow({
  */
 export function InvoiceImageSheet({ invoice }: InvoiceImageSheetProps) {
   const status = PAYMENT_STATUS_META[invoice.paymentStatus];
+  const depositStatus = getDepositStatus(
+    invoice.grandTotal,
+    invoice.downpaymentRequired,
+    invoice.amountPaid,
+  );
+  const depositShortfall = getDepositShortfall(
+    invoice.downpaymentRequired,
+    invoice.amountPaid,
+  );
   const subtotal = roundMoney(
     invoice.services.reduce((sum, line) => sum + line.totalPrice, 0),
   );
   const statusMessage =
-    invoice.paymentStatus === 'paid'
+    depositStatus === 'paid-in-full'
       ? 'Payment received in full. Thank you!'
-      : invoice.paymentStatus === 'partial'
-        ? `A partial payment of ${money(invoice.amountPaid)} has been received. The remaining balance of ${money(
+      : depositStatus === 'deposit-received'
+        ? `The required 20% booking deposit has been received. The remaining balance of ${money(
             invoice.balance,
           )} is due upon completion of the service.`
-        : `A 20% downpayment of ${money(
-            invoice.downpaymentRequired,
-          )} is required to confirm this booking. The remaining balance is due upon completion of the service.`;
+        : depositStatus === 'deposit-short'
+          ? `A partial payment of ${money(invoice.amountPaid)} has been received. ${money(
+              depositShortfall,
+            )} more is needed to confirm the booking.`
+          : `A 20% downpayment of ${money(
+              invoice.downpaymentRequired,
+            )} is required to confirm this booking. The remaining balance is due upon completion of the service.`;
 
   return (
     <View style={styles.sheet}>
@@ -149,6 +163,12 @@ export function InvoiceImageSheet({ invoice }: InvoiceImageSheetProps) {
           value={status.label}
           valueColor={status.foreground}
         />
+        {invoice.customerPhone ? <MetaRow label="Phone" value={invoice.customerPhone} /> : null}
+        {invoice.scheduledFor ? <MetaRow label="Service schedule" value={invoice.scheduledFor} /> : null}
+        {invoice.serviceAddress ? (
+          <MetaRow label="Service address" value={invoice.serviceAddress} />
+        ) : null}
+        {invoice.serviceNotes ? <MetaRow label="Service notes" value={invoice.serviceNotes} /> : null}
       </View>
 
       <View style={styles.sectionHeader}>

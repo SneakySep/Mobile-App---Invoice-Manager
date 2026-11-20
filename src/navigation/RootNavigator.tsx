@@ -39,7 +39,7 @@ export function RootNavigator() {
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: BRAND.primary,
-          tabBarInactiveTintColor: '#768680',
+          tabBarInactiveTintColor: BRAND.muted,
           tabBarHideOnKeyboard: true,
           tabBarStyle: styles.tabBar,
           tabBarLabelStyle: styles.tabLabel,

@@ -1,7 +1,7 @@
 import { MD3LightTheme } from 'react-native-paper';
 import type { MD3Theme } from 'react-native-paper';
 import type { AppIconName } from '../types/icons';
-import type { PaymentStatus } from '../types/invoice';
+import type { DepositStatus, PaymentStatus } from '../types/invoice';
 
 /** Brand palette shared by the UI and the invoice PDF. */
 export const BRAND = {
@@ -78,24 +78,55 @@ export interface StatusMeta {
 
 export const PAYMENT_STATUS_META: Record<PaymentStatus, StatusMeta> = {
   paid: {
-    label: 'PAID',
+    label: 'Paid',
     background: '#DCFCE7',
     foreground: '#166534',
     border: '#A7E3BA',
     icon: 'check-decagram-outline',
   },
   partial: {
-    label: 'PARTIAL',
+    label: 'Partially paid',
     background: '#FEF3C7',
     foreground: '#92400E',
     border: '#F3D48A',
     icon: 'progress-clock',
   },
   unpaid: {
-    label: 'UNPAID',
+    label: 'Unpaid',
     background: '#FEE2E2',
     foreground: '#991B1B',
     border: '#F4B4B4',
     icon: 'alert-circle-outline',
+  },
+};
+
+export const DEPOSIT_STATUS_META: Record<DepositStatus, StatusMeta> = {
+  'deposit-due': {
+    label: 'Deposit due',
+    background: '#FFF1F2',
+    foreground: '#9F1239',
+    border: '#FECDD3',
+    icon: 'calendar-alert-outline',
+  },
+  'deposit-short': {
+    label: 'Deposit short',
+    background: '#FFF7E6',
+    foreground: '#9A5B00',
+    border: '#F8D79A',
+    icon: 'cash-minus',
+  },
+  'deposit-received': {
+    label: 'Deposit received',
+    background: '#DCFCE7',
+    foreground: '#166534',
+    border: '#A7E3BA',
+    icon: 'calendar-check-outline',
+  },
+  'paid-in-full': {
+    label: 'Paid in full',
+    background: '#DCFCE7',
+    foreground: '#166534',
+    border: '#A7E3BA',
+    icon: 'check-circle-outline',
   },
 };

@@ -19,6 +19,10 @@ import {
  */
 export function useInvoiceDraft() {
   const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [serviceAddress, setServiceAddress] = useState('');
+  const [scheduledFor, setScheduledFor] = useState('');
+  const [serviceNotes, setServiceNotes] = useState('');
   const [services, setServices] = useState<InvoiceService[]>([]);
   const [transportFeeText, setTransportFeeTextState] = useState('');
   const [amountPaidText, setAmountPaidTextState] = useState('');
@@ -84,6 +88,10 @@ export function useInvoiceDraft() {
 
   const reset = useCallback(() => {
     setCustomerName('');
+    setCustomerPhone('');
+    setServiceAddress('');
+    setScheduledFor('');
+    setServiceNotes('');
     setServices([]);
     setTransportFeeTextState('');
     setAmountPaidTextState('');
@@ -92,15 +100,32 @@ export function useInvoiceDraft() {
   const draft = useMemo<InvoiceDraft>(
     () => ({
       customerName,
+      customerPhone,
+      serviceAddress,
+      scheduledFor,
+      serviceNotes,
       services,
       transportFee,
       amountPaid,
     }),
-    [customerName, services, transportFee, amountPaid],
+    [
+      customerName,
+      customerPhone,
+      serviceAddress,
+      scheduledFor,
+      serviceNotes,
+      services,
+      transportFee,
+      amountPaid,
+    ],
   );
 
   const isDirty =
     customerName.trim().length > 0 ||
+    customerPhone.trim().length > 0 ||
+    serviceAddress.trim().length > 0 ||
+    scheduledFor.trim().length > 0 ||
+    serviceNotes.trim().length > 0 ||
     services.length > 0 ||
     transportFeeText.length > 0 ||
     amountPaidText.length > 0;
@@ -108,6 +133,14 @@ export function useInvoiceDraft() {
   return {
     customerName,
     setCustomerName,
+    customerPhone,
+    setCustomerPhone,
+    serviceAddress,
+    setServiceAddress,
+    scheduledFor,
+    setScheduledFor,
+    serviceNotes,
+    setServiceNotes,
     services,
     addService,
     updateService,

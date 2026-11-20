@@ -109,6 +109,21 @@ export function InvoiceCreatorScreen() {
     setShowValidation(true);
     const currentErrors = getDraftErrors(draft.draft);
     if (hasDraftErrors(currentErrors)) {
+      const hasTopOfFormError = Boolean(
+        currentErrors.customerName ||
+          currentErrors.customerPhone ||
+          currentErrors.serviceAddress ||
+          currentErrors.scheduledFor ||
+          currentErrors.serviceNotes ||
+          currentErrors.services,
+      );
+      requestAnimationFrame(() => {
+        if (hasTopOfFormError) {
+          scrollRef.current?.scrollTo({ y: 0, animated: true });
+        } else {
+          scrollRef.current?.scrollToEnd({ animated: true });
+        }
+      });
       showSnackbar(getFirstErrorMessage(currentErrors) ?? 'Please review the invoice details.');
       return false;
     }
@@ -233,6 +248,23 @@ export function InvoiceCreatorScreen() {
     setEditor({ item, line });
   };
 
+  const handleRemoveLine = (line: InvoiceService) => {
+    if (busy) return;
+
+    Alert.alert(
+      'Remove this service?',
+      `${line.name} will be removed from the unsaved invoice.`,
+      [
+        { text: 'Keep service', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => draft.removeService(line.id),
+        },
+      ],
+    );
+  };
+
   const handleEditorSubmit = (
     item: CatalogItem,
     option: PriceOption,
@@ -279,18 +311,31 @@ export function InvoiceCreatorScreen() {
               value={draft.customerName}
               onChangeText={draft.setCustomerName}
               errorText={showValidation ? errors.customerName : undefined}
+              customerPhone={draft.customerPhone}
+              onChangeCustomerPhone={draft.setCustomerPhone}
+              customerPhoneError={showValidation ? errors.customerPhone : undefined}
+              serviceAddress={draft.serviceAddress}
+              onChangeServiceAddress={draft.setServiceAddress}
+              serviceAddressError={showValidation ? errors.serviceAddress : undefined}
+              scheduledFor={draft.scheduledFor}
+              onChangeScheduledFor={draft.setScheduledFor}
+              scheduledForError={showValidation ? errors.scheduledFor : undefined}
+              serviceNotes={draft.serviceNotes}
+              onChangeServiceNotes={draft.setServiceNotes}
+              serviceNotesError={showValidation ? errors.serviceNotes : undefined}
             />
 
             <SelectedServicesCard
               services={draft.services}
               subtotal={draft.totals.subtotal}
               onEdit={handleEditLine}
-              onRemove={draft.removeService}
+              onRemove={handleRemoveLine}
+              errorText={showValidation ? errors.services : undefined}
             />
 
             <View style={styles.menuHeader}>
               <View>
-                <Text style={styles.menuEyebrow}>SERVICE MENU</Text>
+                <Text style={styles.menuEyebrow}>Service menu</Text>
                 <Text style={styles.menuTitle}>Add a service</Text>
               </View>
               <View style={styles.menuHintRow}>
@@ -320,6 +365,7 @@ export function InvoiceCreatorScreen() {
               subtotal={draft.totals.subtotal}
               grandTotal={draft.totals.grandTotal}
               downpaymentRequired={draft.totals.downpaymentRequired}
+              amountPaid={draft.amountPaid}
               balance={draft.totals.balance}
               paymentStatus={draft.totals.paymentStatus}
               onUseDownpayment={draft.useDownpayment}
